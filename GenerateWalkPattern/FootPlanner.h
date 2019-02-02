@@ -16,11 +16,11 @@ class FootPlanner{
 		const double dt;
 		double time, step_time;
 		double zmp_correct_y, one_step_stride;
-		int foot_step_count, start_leg_sup;
-		double target_distance, shift_y;
+		int foot_step_count;
+		double target_distance, shift_y, foot_y;
 		FootStatus next_leg_support;
 		WalkingStatus walking_status;
-		Pos2D stride, step_num, step, target_pos, control_point, next_control_point;
+		Pos2D stride, target_pos, control_point, next_control_point;
 	public:
 		vector<Vector4d> foot_step_list;
 	public:
