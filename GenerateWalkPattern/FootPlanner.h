@@ -48,7 +48,6 @@ class FootPlanner{
 		}
 		void start_walk(FootStatus ref_leg_sup);
 		void stop_walk();
-        void calc_rad2target_pos();
 };
 
 #endif
