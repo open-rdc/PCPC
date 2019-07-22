@@ -1,0 +1,26 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/akira794/Desktop/PCPC/pcpc/main_org.cpp
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+iostream
+-
+string
+-
+sstream
+-
+iomanip
+-
+cmath
+-
+

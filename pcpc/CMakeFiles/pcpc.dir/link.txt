@@ -1,0 +1,1 @@
+/usr/bin/c++       CMakeFiles/pcpc.dir/main_org.cpp.o  -o pcpc -rdynamic -lboost_system -lboost_filesystem -lboost_iostreams 

@@ -3,7 +3,7 @@
 #echo "tar_x(m) tar_y(m) tar_th(m) vel_x(m/s) vel_y(m/s) cog_x(m) cog_y(m) L(0)R(1) STATE(0-2) ZMP_x(m) ZMP_y(m) ax0 ax1 ax2 ax3 ax4 ax5 ay0 ay1 ay2 ay3 ay4 ay5"
 
 target_y=0
-target_th=0
+target_th=45
 vel_x=0.0
 vel_y=0.0
 cog_x=0

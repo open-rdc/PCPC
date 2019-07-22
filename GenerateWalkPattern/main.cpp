@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	FootPlanner plan_node(SAMPLING_TIME, WALKING_HALF_CYCLE);
 	plan_node.SetFootStepParameter(MAX_X_STEP, MAX_Y_STEP, MAX_W_STEP, FOOT_WIDTH, WALKING_HALF_CYCLE);
 	plan_node.SetTargetPos(target_x, target_y, target_th, foot_status, walking_status);
-#if 1
+#if 0
 	std::cout << "Results of foot steps" << std::endl;
 	for (int i = 0; i < plan_node.foot_step_list.size(); i ++)
 		std::cout << plan_node.foot_step_list[i][0] << ","
@@ -90,10 +90,13 @@ int main(int argc, char *argv[])
 	vector<pair<double,double>> xy_pts_COG;
 	bool out_range = false;
 	int calc_num = (save_file) ? 10000 : (sampling_num_half_cycle * ((walking_status == Stop) ? 2 : 1) + 2);
+
+    //std::cout << "calc_num = " << calc_num << std::endl;
+
 	for(int i = 0; i < calc_num; i ++){
 		/* Calculation Preview Control */
 		if (!preview_control.update(com_pos, com_vel, com_acc)) break;
-
+        //std::cout << SAMPLING_TIME*i << " " << com_pos(0) << " " << com_pos(1) <<" "<< com_vel(0) << " " << com_vel(1)<< std::endl;
 		/* Get Reference ZMP */
 		Vector2d temp_refzmp, previous_refzmp;
 		previous_refzmp = temp_refzmp;
@@ -108,6 +111,7 @@ int main(int argc, char *argv[])
 		preview_control.output_zmp(zmp);
 
 		float dx = zmp(0) - temp_refzmp(0), dy = zmp(1) - temp_refzmp(1);
+        //std::cout << SAMPLING_TIME*i << " " << com_pos(0) << " " << com_pos(1) << std::endl;
 		if (fabs(dx) > ZMP_RANGE || fabs(dy) > ZMP_RANGE) out_range = true;
 
 		/* Wriing Gait Pattern */
@@ -124,9 +128,12 @@ int main(int argc, char *argv[])
     if (save_file){
         FILE *gp = popen("gnuplot -persist\n", "w");
     	fprintf(gp, "set xlabel \"x [m]\"\n");
+//        fprintf(gp, "set xrange[-0.1:0.4]\n");
     	fprintf(gp, "set ylabel \"y [m]\"\n");
+//        fprintf(gp, "set yrange[-0.1:0.1]\n");
         fprintf(gp, "set size ratio -1\n");
-    	fprintf(gp, "plot '-' with lines lw 5 lt 7 title \"COM\", '-' with lines lw 5 lt 2 title \"RefZMP\", \n");
+        fprintf(gp, "set key left top \n");
+    	fprintf(gp, "plot '-' with lines lw 4 lt 7 title \"COM\", '-' with lines lw 4 lt 2 title \"RefZMP\", \n");
     	for(std::size_t i=0;i<xy_pts_COG.size();i++) fprintf(gp, "%f\t%f\n", xy_pts_COG[i].first, xy_pts_COG[i].second); fprintf(gp,"e\n");
     	for(std::size_t i=0;i<xy_pts_refZMP.size();i++) fprintf(gp, "%f\t%f\n", xy_pts_refZMP[i].first, xy_pts_refZMP[i].second); fprintf(gp, "e\n");
     	fprintf(gp,"exit\n");
@@ -136,20 +143,17 @@ int main(int argc, char *argv[])
 #if 1
 	if (out_range == true){
 		for(int i = 0; i < 14; i ++) std::cout << "0" << std::endl;
-		std::cerr << "out of range" << std::endl;
+		std::cerr << "zmp is out of range" << std::endl;
 		return 0;
 	}
 #endif
 	if (!save_file){
 		int start = 0;
-
 		int end = sampling_num_half_cycle * ((walking_status != Stop) ? 1 : 2);
-
 		if (walking_status == Stop){
 			if (stop_status == 1) start = sampling_num_half_cycle * 0.5;
 			end = sampling_num_half_cycle * ((stop_status == 0) ? 0.5 : 2.0);
 		}
-
 		int num = end - start;
 		//std::cout << "num:" << num << std::endl;
         //std::cout << "start, end = " << start << end << std::endl;
@@ -157,9 +161,10 @@ int main(int argc, char *argv[])
         //end = end + 34;
 		VectorXd t(num), x(num), y(num);
 		for(int i = 0, j = start; j < end; i ++, j ++){
-			t(i) = j * SAMPLING_TIME;
+            t(i) = j * SAMPLING_TIME;
 			x(i) = xy_pts_COG[j].first;
 			y(i) = xy_pts_COG[j].second;
+            std::cout << j * SAMPLING_TIME <<" "<< x(i) <<" "<< y(i) << std::endl;
 		}
 
 
@@ -173,6 +178,25 @@ int main(int argc, char *argv[])
         std::cout << std::endl;
 		curve_fitting.MAP(t, y, 0.0);
 		std::cout << curve_fitting.GetCoefficient() << std::endl;
+
+        float esp_max, esp = 0.0;
+        for(int i=0;i<num;i++)
+        {
+            esp = fabs(curve_fitting.y(t(i)) - y(i));
+            if(esp_max < esp) esp_max = esp;
+        }
+            std::cout << "esp_max:" << esp_max << std::endl;
+
+        FILE *gp = popen("gnuplot -persist\n", "w");//-persist
+        fprintf(gp, "set xlabel \"x [m]\"\n");
+        fprintf(gp, "set ylabel \"y [m]\"\n");
+        //fprintf(gp, "set size ratio -1\n");
+        fprintf(gp, "set colorsequence classic \n");
+        fprintf(gp, "plot '-' with lines lw 3 lt 2 title \"Polynomial Function\", '-' with lines lw 3 lt 1 dt 3 title \"Preview Control\", \n");
+        for(int i=0;i<num;i++) fprintf(gp, "%f\t%f\n", t(i), curve_fitting.y(t(i))); fprintf(gp, "e\n");
+        for(int i=0;i<num;i++) fprintf(gp, "%f\t%f\n", t(i), y(i)); fprintf(gp,"e\n");
+        fprintf(gp,"exit\n");
+        pclose(gp);
 	}
 #endif
 	return 0;
