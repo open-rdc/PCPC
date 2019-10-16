@@ -8,8 +8,6 @@
 #include <iomanip>
 #include <cmath>
 
-using namespace std;
-
 static const double FOOT_WIDTH			= 0.050;
 static const double WALKING_HALF_CYCLE	= 0.340;
 static const double SAMPLING_TIME		= 0.010;
@@ -57,11 +55,14 @@ int main(int argc, char *argv[])
 	float disp_x = 0.0f, disp_y = 0.0f, step_dx = 0.0f, step_dy = 0.0f;
 	int dir = 1;
 	int sampling_num_half_cycle = (WALKING_HALF_CYCLE + SAMPLING_TIME / 2) / SAMPLING_TIME;
-	cout << "sampling_num_half_cycle:" << sampling_num_half_cycle << endl;
-	std::cout << "time(s),ref_x(m),ref_y(m),cog_x(m),cog_y(m),v_x(m/s),v_y(m/s),a_x(m/s2),a_y(m/s2)" << std::endl;
 
+	std::cout << "time(s),ref_x(m),ref_y(m),cog_x(m),cog_y(m),v_x(m/s),v_y(m/s),a_x(m/s2),a_y(m/s2),walking_status" << std::endl;
 
-	for(int i = 0; i < end_time; i ++){
+    int step_count = 0;
+    float if_selest = -2;
+
+    for(int i = 0; i < end_time; i ++){
+        if_selest = -2;
 		float t = SAMPLING_TIME * i;
 		if ((i%sampling_num_half_cycle  == 0 && walking < 2) ||
 			(i%(sampling_num_half_cycle/2) == 0 && walking == 2)){
@@ -71,6 +72,7 @@ int main(int argc, char *argv[])
 			com = com0;
 			if (walking < 2){
 				foot_y = FOOT_WIDTH * ((walking == 0) ? 0 : ((support_foot == 1) ? -1 : 1));
+//                std::cout << SAMPLING_TIME*i<<","<<ref_zmp_x_gc<<","<< ref_zmp_x << std::endl; //check
 				target_dx = target[step].x - ref_zmp_x_gc - ref_zmp_x;
 				target_dy = target[step].y - ref_zmp_y_gc - ref_zmp_y - foot_y;
 				cog_x = current_x - ref_zmp_x_gc - ref_zmp_x;
@@ -90,18 +92,13 @@ int main(int argc, char *argv[])
 			} else if (walking == 2) walking = 3;
 			com += std::to_string(walking) + " ";
 //			com += "temp.csv";
-
-            std::cout << "walking=" << walking << std::endl; 
-#if 0
-			std::cerr << com << std::endl;
-#endif
 #if 1
-			// GenerateWalkPatternの実行
+			std::cerr << SAMPLING_TIME * i <<","<< com << std::endl;
+#endif
 			if ((fp = popen(com.c_str(), "r")) == NULL){
 				std::cerr <<  "error" << std::endl;
 				exit(-1);
 			}
-
 			for(int j = 0; j < NUM_COEF; j ++){
 				char str[256], *ptr;
 				fgets(str, 256, fp);
@@ -109,12 +106,12 @@ int main(int argc, char *argv[])
 				ptr=strchr(str, '\n');
 				if (ptr != NULL) *ptr = '\0';
 				corr[j] = atof(str);
+                //std::cout <<"ans:"<< corr[j] <<std::endl;
 #if 0
 				printf("%s\n", str);
 #endif
 			}
-			//cout << corr[0] << " " << corr[1] << endl;
-#endif
+            //std::cout << std::endl;
 //check start
 			if (walking < 3){
 				disp_x = current_x - ref_zmp_x_gc - ref_zmp_x;
@@ -130,7 +127,9 @@ int main(int argc, char *argv[])
 				step_dy = (walking == 1) ? ref_zmp_y - foot_y : 0;
 			}
 //			std::cout << "step_dy: " << step_dy << std::endl;
+
 			if (walking == 0){
+                if_selest = 0;
 				corr[ 2] = 0.00986713 * vel_x +   1.00095 * disp_x + 0.00000150557;
 				corr[ 3] =   0.960351 * vel_x + 0.0784907 * disp_x + 9.39E-05;
 				corr[ 4] =   -5.88016 * vel_x -   18.2986 * disp_x + 0.0389385;
@@ -144,6 +143,7 @@ int main(int argc, char *argv[])
 				corr[12] =   -25.9567 * vel_y -   117.006 * disp_y - 0.541707;
 				corr[13] =    18.0493 * vel_y +   85.7184 * disp_y - 0.171364;
 			} else if (walking == 1 && fabs(target_dx) >= 0.18){
+                if_selest = 18;
 				corr[ 2] = 0.00986713 * vel_x +   1.00095 * disp_x + 0.00000683605;
 				corr[ 3] =   0.960351 * vel_x + 0.0784907 * disp_x + 0.00210656;
 				corr[ 4] =   -5.88016 * vel_x -   18.2986 * disp_x + 0.308368;
@@ -157,6 +157,7 @@ int main(int argc, char *argv[])
 				corr[12] =   -25.9567 * vel_y -   117.006 * disp_y +    17.86045 * step_dy - 4.50712      * dir;
 				corr[13] =    18.0493 * vel_y +   85.7184 * disp_y +     2.75671 * step_dy + 4.55405      * dir;
 			} else if (walking == 1 && fabs(target_dx) >= 0.12){
+                if_selest = 12;
 				corr[ 2] =  0.00986713  * vel_x + 1.000954277 * disp_x + 1.27229E-05 * target_dx + 4.54573E-06;
 				corr[ 3] =  0.960350333 * vel_x + 0.078490216 * disp_x - 0.002620714 * target_dx + 0.002578286;
 				corr[ 4] = -5.880161404 * vel_x - 18.29858372 * disp_x + 0.066635714 * target_dx + 0.2963735  ;
@@ -170,6 +171,7 @@ int main(int argc, char *argv[])
 				corr[12] =   -25.9567 * vel_y -   117.006 * disp_y +    17.86045 * step_dy - 4.50712      * dir;
 				corr[13] =    18.0493 * vel_y +   85.7184 * disp_y +     2.75671 * step_dy + 4.55405      * dir;
 			} else if (walking == 1 && fabs(target_dx) >= 0.06){
+                if_selest = 6;
 				corr[ 2] =  0.00986713  * vel_x + 1.000954277 * disp_x + 1.23591E-05 * target_dx + 4.58932E-06;
 				corr[ 3] =  0.960350333 * vel_x + 0.078490216 * disp_x + 0.004185036 * target_dx + 0.001761604;
 				corr[ 4] = -5.880161404 * vel_x - 18.29858372 * disp_x + 0.582346429 * target_dx + 0.234488107;
@@ -183,6 +185,7 @@ int main(int argc, char *argv[])
 				corr[12] = -25.9567     * vel_y - 117.006     * disp_y +     9.12168 * target_dy -      4.42899 * dir;
 				corr[13] =  18.0493     * vel_y + 85.7184     * disp_y +    0.986705 * target_dy +      4.47628 * dir;
 			} else if (walking == 1){
+                if_selest = 1;
 				corr[ 2] =  0.00986713  * vel_x + 1.000954277 * disp_x + 8.88479E-05 * target_dx - 2.2516E-22 ;
 				corr[ 3] =  0.960350333 * vel_x + 0.078490216 * disp_x + 0.033544948 * target_dx - 3.581E-20  ;
 				corr[ 4] = -5.880161404 * vel_x - 18.29858372 * disp_x + 4.490487582 * target_dx - 4.79369E-18;
@@ -196,6 +199,7 @@ int main(int argc, char *argv[])
 				corr[12] = -25.9567     * vel_y - 117.006     * disp_y +     9.12168 * target_dy -      4.42899 * dir;
 				corr[13] =  18.0493     * vel_y + 85.7184     * disp_y +    0.986705 * target_dy +      4.47628 * dir;
 			} else if ((walking == 2)&&((i - last_step_start_time) < sampling_num_half_cycle / 2)){ // 1st half
+                if_selest = 0.5;
 				corr[ 2] =  0.009842334 * vel_x + 1.000792528 * disp_x + 0.000343766 * step_dx;
 				corr[ 3] =  0.964866596 * vel_x + 0.110185519 * disp_x + 0.076905169 * step_dx;
 				corr[ 4] = -6.028117018 * vel_x - 19.41137766 * disp_x + 13.02902198 * step_dx;
@@ -209,6 +213,7 @@ int main(int argc, char *argv[])
 				corr[12] = -34.89211035 * vel_y - 196.8393784 * disp_y + 69.92306374 * step_dy - 6.344316758 * dir;
 				corr[13] =  34.23064825 * vel_y + 246.0010589 * disp_y - 29.83588571 * step_dy + 10.80424676 * dir;
 			} else { // 2nd half
+                if_selest = 0.1;
 				corr[ 2] =  0.02698325  * vel_x + 1.079618597 * disp_x - 0.536945198 * step_dx;
 				corr[ 3] =  0.634442754 * vel_x - 1.432506511 * disp_x + 7.118750879 * step_dx;
 				corr[ 4] = -3.377784333 * vel_x - 6.561093506 * disp_x - 15.05317473 * step_dx;
@@ -222,12 +227,18 @@ int main(int argc, char *argv[])
 				corr[12] = -6.651343333 * vel_y - 23.81345498 * disp_y - 12.23722527 * step_dy - 1.802537787 * dir;
 				corr[13] =  2.531252298 * vel_y + 9.71487368  * disp_y + 3.636932747 * step_dy + 0.667591974 * dir;
 			}
-			//for(int i=2;i<14;i++)
-				//cout << corr[i] << " " << endl;
+
+//            std::cout << current_x <<","<< current_y<<","<< vel_x <<","<<vel_y<<std::endl;
 //			corr[2] = current_x;
 //			corr[8] = current_y;
+#if 0
+            std::cout << target_dx <<"," << target_dy << "," << ref_zmp_x_gc <<","<< ref_zmp_y_gc <<","<< ref_zmp_x <<"," << ref_zmp_y << "," << foot_y << "," << step_count << "," << if_selest << std::endl;
+            step_count++;
+#endif
 			corr[2] += ref_zmp_x_gc;
 			corr[8] += ref_zmp_y_gc;
+
+
 			if (walking < 2){
 				vel_x = vel_y = 0.0f;
 				for(int j = 1; j < 6; j ++){
@@ -244,7 +255,6 @@ int main(int argc, char *argv[])
 			current_x += corr[j+2] * std::pow(dt, j);
 			current_y += corr[j+8] * std::pow(dt, j);
 		}
-		#if 1
 		// for checking
 		double v_x = 0.0, v_y = 0.0;
 		for(int j = 1; j < 6; j ++){
@@ -256,10 +266,9 @@ int main(int argc, char *argv[])
 			acc_x += j * (j - 1) * corr[j+2] * std::pow(dt, j - 2);
 			acc_y += j * (j - 1) * corr[j+8] * std::pow(dt, j - 2);
 		}
-		#endif
 		if (walking == 2 && (i - last_step_start_time) == 34 / 2) foot_y = 0.0f;
-		//std::cout << SAMPLING_TIME * i << "," << ref_zmp_x_gc << "," << ref_zmp_y_gc - foot_y << "," << current_x << "," << current_y << "," <<
-			//v_x << "," << v_y << "," << acc_x << "," << acc_y << std::endl;
+//		std::cout << SAMPLING_TIME * i << "," << ref_zmp_x_gc << "," << ref_zmp_y_gc - foot_y << "," << current_x << "," << current_y << "," <<
+//			v_x << "," << v_y << "," << acc_x << "," << acc_y << "," << walking << std::endl;
 	}
 	return 0;
 }

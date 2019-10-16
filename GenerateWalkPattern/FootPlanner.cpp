@@ -1,5 +1,9 @@
 #include "FootPlanner.h"
 
+double _rad2deg(double radian){
+    return radian * 180/3.14;
+}
+
 bool FootPlanner::SetTargetPos(const double target_x, const double target_y, const double target_th, FootStatus ref_leg_sup, WalkingStatus ref_walking_status)
 {
 	target_pos.x	 = target_x;
@@ -42,34 +46,52 @@ bool FootPlanner::SetTargetPos(const double target_x, const double target_y, con
     }else{
         stride.th = 0.0;
     }
-/*
-    cout << endl << "th_foot_count = " << th_foot_step_count << endl;
-    cout << endl;
-    cout << "total_stride(x,y,th) = "<< stride.x << ","<< stride.y << "," << stride.th * 180/3.14 << "(deg) "<< endl;
-    cout << "total_foot_step_count=" << foot_step_count << endl;
-*/
 	bool result = target_pos_2_foot_step(ref_leg_sup);
+
 	return result;
 }
 
 bool FootPlanner::target_pos_2_foot_step(FootStatus ref_leg_sup)
 {
     start_walk(ref_leg_sup);
-
+    next_control_point = {0.0f, 0.0f, stride.th};
     for(int i = 1; i < foot_step_count; i++){
-
-        shift_y = foot_y * ((i%2)*2-1)*2*(-1);
-        next_control_point.x = control_point.x + stride.x*cos(control_point.th) - (stride.y + shift_y)*sin(control_point.th);
-        next_control_point.y = control_point.y + stride.x*sin(control_point.th) + (stride.y + shift_y)*cos(control_point.th);
-        next_control_point.th= control_point.th + stride.th;
-
         time += step_time;
-        foot_step_list.push_back(Vector4d(time, next_control_point.x, next_control_point.y, next_control_point.th));
-        control_point = next_control_point;
+
+        if(next_leg_support == RightLeg){
+            next_leg_support = LeftLeg;
+            foot_y = 1;
+        }else if(next_leg_support == LeftLeg){
+            next_leg_support = RightLeg;
+            foot_y = -1;
+        }
+
+        control_point = {
+            next_control_point.x + stride.x*cos(next_control_point.th) + (fabs(zmp_correct_y))*cos(next_control_point.th +foot_y*(M_PI/2)),
+            next_control_point.y + stride.x*sin(next_control_point.th) + (fabs(zmp_correct_y))*sin(next_control_point.th +foot_y*(M_PI/2)),
+            next_control_point.th
+        };
+//        cout  <<  time << "," << control_point.x << "," << control_point.y << "," << _rad2deg(control_point.th) << endl;
+        foot_step_list.push_back(Vector4d(time, control_point.x, control_point.y , control_point.th));
+
+        next_control_point = {
+                    next_control_point.x + stride.x*cos(next_control_point.th),//次の原点
+                    next_control_point.y + stride.x*sin(next_control_point.th),
+                    next_control_point.th + stride.th //次の旋回角度
+        };
     }
-//    cout << "loopout :" << control_point.x << "," << control_point.y << "," << control_point.th << endl;
+
+//    cout << "loopout :" << time << "," << control_point.x << "," << control_point.y << "," << _rad2deg(control_point.th) << endl;
     stop_walk();
 
+//total foot print check
+/*
+    cout << endl << "total_foot_print" << endl;
+    std::size_t size = foot_step_list.size();
+    for(std::size_t i=0; i<size; i++){
+        cout << foot_step_list[i][0] <<","<<  foot_step_list[i][1] <<","<< foot_step_list[i][2] <<","<< _rad2deg(foot_step_list[i][3]) << endl;
+    }
+*/
 	return true;
 }
 
@@ -80,67 +102,57 @@ double FootPlanner::DistanceTargetPos(Pos2D current_pos)
 
 void FootPlanner::start_walk(FootStatus ref_leg_sup)
 {
-    if(ref_leg_sup == 1){ //shiftの調整 左右スタート支持脚で注意
-        foot_y = zmp_correct_y;
-    }else if(ref_leg_sup == -1){
-        foot_y = -zmp_correct_y;
-    }
-
-    control_point = {0.0f, 0.0f, 0.0f};
-    next_control_point = {0.0f, 0.0f, 0.0f};
-
     if(walking_status == Start){
-        foot_step_list.push_back(Vector4d(time, control_point.x, control_point.x, control_point.th));
+        foot_step_list.push_back(Vector4d(0.0f, 0.0f, 0.0f, 0.0f));
         time += step_time;
     }
 
-    next_control_point.x  = control_point.x ;
-    next_control_point.y  = control_point.y + foot_y;
-    next_control_point.th = control_point.th;
-    foot_step_list.push_back(Vector4d(time, next_control_point.x, next_control_point.y, control_point.th));
-
-    control_point = next_control_point;
+    if(ref_leg_sup == RightLeg){
+        foot_step_list.push_back(Vector4d(time, 0.0f, zmp_correct_y, 0.0f));
+        next_leg_support = LeftLeg;
+    }else if(ref_leg_sup == LeftLeg){
+        foot_step_list.push_back(Vector4d(time, 0.0f, -zmp_correct_y, 0.0f));
+        next_leg_support = RightLeg;
+    }
 }
 
 void FootPlanner::stop_walk()
 {
     if(target_pos.th != 0.0){
-        next_control_point = target_pos;
+        next_control_point.th = target_pos.th;
     }else if(target_pos.th == 0.0){
-        stride.x = target_pos.x - control_point.x;
+        stride.x = target_pos.x - next_control_point.x;
     }
-
-    if(shift_y == -0.1){
-        next_control_point.x = control_point.x + stride.x*cos(next_control_point.th) - (stride.y - shift_y)*sin(next_control_point.th);
-        next_control_point.y = control_point.y + stride.x*sin(next_control_point.th) + (stride.y - shift_y)*cos(next_control_point.th);
-        if(walking_status != Stop){
-            time += step_time;
-            foot_step_list.push_back(Vector4d(time, next_control_point.x, next_control_point.y, next_control_point.th));
+    if(walking_status != Stop){
+        time += step_time;
+        if(next_leg_support == RightLeg){
+            foot_y = 1;
+        }else if(next_leg_support == LeftLeg){
+            foot_y = -1;
         }
-    }else if(shift_y == 0.1){
-        next_control_point.x = control_point.x + stride.x*cos(next_control_point.th) - (stride.y - shift_y)*sin(next_control_point.th);
-        next_control_point.y = control_point.y + stride.x*sin(next_control_point.th) + (stride.y - shift_y)*cos(next_control_point.th);
 
-        if(walking_status != Stop){
-            time += step_time;
-            foot_step_list.push_back(Vector4d(time, next_control_point.x, next_control_point.y, next_control_point.th));
-        }
+        control_point = {
+            next_control_point.x + stride.x*cos(next_control_point.th) + (fabs(zmp_correct_y))*cos(next_control_point.th +foot_y*(M_PI/2)),
+            next_control_point.y + stride.x*sin(next_control_point.th) + (fabs(zmp_correct_y))*sin(next_control_point.th +foot_y*(M_PI/2)),
+            next_control_point.th
+        };
+
+        next_control_point = {
+                    next_control_point.x + stride.x*cos(next_control_point.th),//次の原点
+                    next_control_point.y + stride.x*sin(next_control_point.th),
+                    next_control_point.th + 0
+        };
+
+        foot_step_list.push_back(Vector4d(time, control_point.x, control_point.y, control_point.th));
     }
 
-    if(shift_y == -0.1){
-        next_control_point.x += zmp_correct_y*cos(next_control_point.th - (M_PI/2));
-        next_control_point.y += zmp_correct_y*sin(next_control_point.th - (M_PI/2));
-    }else if(shift_y == 0.1){
-        next_control_point.x += zmp_correct_y*cos(next_control_point.th + (M_PI/2));
-        next_control_point.y += zmp_correct_y*sin(next_control_point.th + (M_PI/2));
-    }
+    time += step_time/2.0f;
 
-    time += step_time;
+//    cout << "control_point:   " << time <<"," << control_point.x <<","<< control_point.y  <<","<< _rad2deg(control_point.th) << endl;
+//    cout << "next_control_point:   " << time <<"," << next_control_point.x <<","<< next_control_point.y  <<","<< _rad2deg(next_control_point.th) << endl;
+	foot_step_list.push_back(Vector4d(time, next_control_point.x, next_control_point.y, next_control_point.th));
+	next_leg_support = BothLeg;
 
-    foot_step_list.push_back(Vector4d(time, next_control_point.x, next_control_point.y, next_control_point.th));
-
-    next_leg_support = BothLeg;
-
-    foot_step_list.push_back(Vector4d(time+2.0f, next_control_point.x, next_control_point.y, next_control_point.th));
+	foot_step_list.push_back(Vector4d(time+2.0f, next_control_point.x, next_control_point.y, next_control_point.th));
 
 }

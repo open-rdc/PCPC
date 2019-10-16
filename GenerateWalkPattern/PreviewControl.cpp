@@ -10,6 +10,7 @@ void preview_control::interpolation_zmp_trajectory(vector<Vector4d> foot_step_li
 		double temp_time = t*dt;
 		if(foot_step_list[foot_step_count](0) < temp_time) foot_step_count++;
 		this->refzmp.push_back(Vector2d(foot_step_list[foot_step_count-1](1), foot_step_list[foot_step_count-1](2)));
+        this->refzmp_xyth.push_back(Vector3d(foot_step_list[foot_step_count-1](1), foot_step_list[foot_step_count-1](2), foot_step_list[foot_step_count-1](3)));
 	}
 }
 
@@ -52,6 +53,7 @@ bool preview_control::update(Vector2d &com_pos, Vector2d &com_vel, Vector2d &com
 	}
 
 	p = c * xk; temp_refzmp = refzmp[preview_num];
+    temp_refzmp_xyth = refzmp_xyth[preview_num];//add th
 
 	calc_u();
 	calc_xk(com_pos, com_vel, com_acc);

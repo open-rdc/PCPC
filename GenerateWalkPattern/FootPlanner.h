@@ -17,7 +17,7 @@ class FootPlanner{
 		double time, step_time;
 		double zmp_correct_y, one_step_stride;
 		int foot_step_count;
-		double target_distance, shift_y, foot_y;
+		double target_distance, foot_y;
 		FootStatus next_leg_support;
 		WalkingStatus walking_status;
 		Pos2D stride, target_pos, control_point, next_control_point;

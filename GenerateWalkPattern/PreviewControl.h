@@ -29,9 +29,11 @@ class preview_control
 		Matrix<double,3,3> P;
 		Matrix<double,1,3> K;
 		Matrix<double,2,1> temp_refzmp;
+        Matrix<double,3,1> temp_refzmp_xyth;
 		const double Q, R;
 	public:
 		vector<Vector2d> refzmp;
+        vector<Vector3d> refzmp_xyth;
 	public:
 		preview_control(const double _dt, const double _preview_delay, const double _zc, const double _Q=1e+08, const double _R=1.0)
 			: dt(_dt), preview_delay(_preview_delay), zc(_zc), Q(_Q), R(_R), preview_num(0), stop_time(1.0),
@@ -44,8 +46,8 @@ class preview_control
 			c << 1, 0, zc / ACCELERATION_OF_GRAVITY;
 
 			calc_riccati_equation<3>(A, b, c);
-			
-			calc_f(); 
+
+			calc_f();
 		}
 		~preview_control()
 		{}
@@ -70,6 +72,7 @@ class preview_control
 		void interpolation_zmp_trajectory(vector<Vector4d> foot_step_list);
 		void set_com_param(Vector2d &com_pos, Vector2d &com_vel, Vector2d &com_acc);
 		void get_ref_zmp(Matrix<double,2,1> &refzmp){refzmp = this->temp_refzmp;}
+        void get_ref_zmp_xyth(Matrix<double,3,1> &refzmp_xyth){refzmp_xyth = this->temp_refzmp_xyth;}//add
 		void output_zmp(Matrix<double,1,2> &output_zmp){output_zmp = this->p;}
 		void calc_f();
 		void calc_u();
