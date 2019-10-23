@@ -16,7 +16,7 @@ static const double WALKING_HALF_CYCLE	= 0.340;
 static const double SAMPLING_TIME		= 0.010;
 static const double MAX_X_STEP			= 0.060;
 static const double MAX_Y_STEP			= 0.060;
-static const double MAX_W_STEP          = 0.200;
+static const double MAX_W_STEP          = 0.15708; //9deg 0.15708
 
 double rad2deg(double radian){
     return radian * 180/M_PI;
@@ -134,12 +134,12 @@ int main(int argc, char *argv[])
 #if 1
     if (save_file){
         FILE *gp = popen("gnuplot -persist\n", "w");
-/*
+
         fprintf(gp, "set xlabel \"x [m]\"\n");
         fprintf(gp, "set xrange[-0.1:0.5]\n");
     	fprintf(gp, "set ylabel \"y [m]\"\n");
         fprintf(gp, "set yrange[-0.1:0.18]\n");
-*/
+
         fprintf(gp, "set size ratio -1\n");
 
         fprintf(gp, "set key left top \n");
