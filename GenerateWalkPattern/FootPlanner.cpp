@@ -29,16 +29,21 @@ bool FootPlanner::SetTargetPos(const double target_x, const double target_y, con
         if(target_pos.y < 0) stride.y *= -1.0f;
         stride.x = target_pos.x / foot_step_count;
     }
-
+    cout << "stridex,y,th: " << stride.x <<","<<stride.y<<","<<stride.th<<endl;
     if(target_pos.th != 0.0){
         th_foot_step_count = static_cast<int>((fabs(target_pos.th) + stride.th - 0.001) / stride.th);
+        cout << "th: normal: " << th_foot_step_count <<"," << foot_step_count << endl;
         if(target_pos.th < 0.0) stride.th *= -1.0f;
 
         if(th_foot_step_count == foot_step_count){
 
         }else if(th_foot_step_count < foot_step_count){
+            /*
+            cout << "####before:" << stride.th << endl;
             stride.th = target_pos.th / foot_step_count;
-
+            cout << "####after:" << stride.th << endl;
+            */
+            foot_step_count = th_foot_step_count;
         }else{
             foot_step_count = th_foot_step_count;
         }
@@ -46,6 +51,7 @@ bool FootPlanner::SetTargetPos(const double target_x, const double target_y, con
     }else{
         stride.th = 0.0;
     }
+    cout << "result stridex,y,th: " << stride.x <<","<<stride.y<<","<<stride.th<<endl;
 	bool result = target_pos_2_foot_step(ref_leg_sup);
 
 	return result;
@@ -85,13 +91,13 @@ bool FootPlanner::target_pos_2_foot_step(FootStatus ref_leg_sup)
     stop_walk();
 
 //total foot print check
-/*
+
     cout << endl << "total_foot_print" << endl;
     std::size_t size = foot_step_list.size();
     for(std::size_t i=0; i<size; i++){
         cout << foot_step_list[i][0] <<","<<  foot_step_list[i][1] <<","<< foot_step_list[i][2] <<","<< _rad2deg(foot_step_list[i][3]) << endl;
     }
-*/
+
 	return true;
 }
 
