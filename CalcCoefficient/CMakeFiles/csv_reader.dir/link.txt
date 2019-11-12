@@ -1,1 +1,0 @@
-/usr/bin/c++       CMakeFiles/csv_reader.dir/read.cpp.o  -o csv_reader -rdynamic -lboost_system -lboost_filesystem -lboost_iostreams 

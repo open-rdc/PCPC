@@ -1,1 +1,0 @@
-/usr/bin/c++       CMakeFiles/GenerateWalkPattern.dir/main.cpp.o CMakeFiles/GenerateWalkPattern.dir/PreviewControl.cpp.o CMakeFiles/GenerateWalkPattern.dir/FootPlanner.cpp.o CMakeFiles/GenerateWalkPattern.dir/CurveFitting.cpp.o  -o GenerateWalkPattern -rdynamic -lboost_system -lboost_filesystem -lboost_iostreams 
