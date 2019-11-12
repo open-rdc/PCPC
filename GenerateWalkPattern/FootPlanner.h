@@ -23,6 +23,7 @@ class FootPlanner{
 		Pos2D stride, target_pos, control_point, next_control_point;
 	public:
 		vector<Vector4d> foot_step_list;
+        vector<Vector4d> foot_step_trajectory;
 	public:
 		FootPlanner(const double _dt, const double _step_time)
 			: dt(_dt), step_time(_step_time), foot_step_count(0)
@@ -44,6 +45,7 @@ class FootPlanner{
 		void foot_step_list_clear()
 		{
 			foot_step_list.clear();
+            foot_step_trajectory.clear(); //add 10.23.2019
 			foot_step_count = 0;
 		}
 		void start_walk(FootStatus ref_leg_sup);

@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
     vector<Vector3d> xyth_pts_refZMP;//add
 	vector<pair<double,double>> xy_pts_ZMP;
 	vector<pair<double,double>> xy_pts_COG;
+
 	bool out_range = false;
 	int calc_num = (save_file) ? 10000 : (sampling_num_half_cycle * ((walking_status == Stop) ? 2 : 1) + 2);
 
@@ -131,24 +132,80 @@ int main(int argc, char *argv[])
 	if (save_file) writing_file.close();
 
 
-#if 1
+#if 1 //各ステップ時の初期重心位置の導出
+    vector<pair<double,double>> xy_cog_start_point;
+    vector<pair<double,double>> modi_xy_cog_start_point;
+    vector<pair<double,double>> modi_xy_trj_start_point;
+    vector<pair<double,double>> modi_init_cog_xy_point;
+
+    int j = 0;
+    double init_cog_x, init_cog_y, init_cog_th, origin_x, origin_y;
+    init_cog_x = init_cog_y = origin_x = origin_y = 0.0;
+    init_cog_th = deg2rad(9.0);
+    //std::cout << "step_cog_point" << std::endl;
+    for(int i=0;i<xy_pts_COG.size();i++){
+        if(i%34 ==0){
+            //std::cout << i*SAMPLING_TIME <<"," << xy_pts_COG[i].first <<"," << xy_pts_COG[i].second;
+            xy_cog_start_point.push_back(make_pair(xy_pts_COG[i].first, xy_pts_COG[i].second));
+            //std::cout << "," << plan_node.foot_step_trajectory[j][1] << "," << plan_node.foot_step_trajectory[j][2] << "," << rad2deg(plan_node.foot_step_trajectory[j-1][3]);//-(j-1)*9.0
+
+            init_cog_x = (xy_pts_COG[i].first  - plan_node.foot_step_trajectory[j-1][1])*cos(-plan_node.foot_step_trajectory[j-1][3])- (xy_pts_COG[i].second - plan_node.foot_step_trajectory[j-1][2])*sin(-plan_node.foot_step_trajectory[j-1][3]) + plan_node.foot_step_trajectory[j-1][1];
+            init_cog_y = (xy_pts_COG[i].first  - plan_node.foot_step_trajectory[j-1][1])*sin(-plan_node.foot_step_trajectory[j-1][3])+ (xy_pts_COG[i].second - plan_node.foot_step_trajectory[j-1][2])*cos(-plan_node.foot_step_trajectory[j-1][3]) + plan_node.foot_step_trajectory[j-1][2];
+
+            //modi_xy_cog_start_point.push_back(make_pair(init_cog_x,init_cog_y));
+
+            origin_x = (plan_node.foot_step_trajectory[j][1] - plan_node.foot_step_trajectory[j-1][1])*cos(-plan_node.foot_step_trajectory[j-1][3])- (plan_node.foot_step_trajectory[j][2] - plan_node.foot_step_trajectory[j-1][2])*sin(-plan_node.foot_step_trajectory[j-1][3]) + plan_node.foot_step_trajectory[j-1][1];
+            origin_y = (plan_node.foot_step_trajectory[j][1] - plan_node.foot_step_trajectory[j-1][1])*sin(-plan_node.foot_step_trajectory[j-1][3])+ (plan_node.foot_step_trajectory[j][2] - plan_node.foot_step_trajectory[j-1][2])*cos(-plan_node.foot_step_trajectory[j-1][3]) + plan_node.foot_step_trajectory[j-1][2];
+
+            //modi_xy_trj_start_point.push_back(make_pair(origin_x,origin_y));
+
+            //std::cout << "," << init_cog_x  << "," << origin_x << "," << init_cog_y << "," << origin_y << std::endl;
+
+            init_cog_x = init_cog_x - origin_x;
+            init_cog_y = init_cog_y - origin_y;
+
+            //std::cout << i <<  "," << xyth_pts_refZMP[i](0)  << "," << xyth_pts_refZMP[i](1) << "," << xy_pts_COG[i].first << "," << xy_pts_COG[i].second << std::endl;
+            //std::cout << "origin = " <<i*0.01 << ","<< plan_node.foot_step_trajectory[j-1][1] << "," << plan_node.foot_step_trajectory[j-1][2] << "," << rad2deg(-plan_node.foot_step_trajectory[j-1][3]) << std::endl;
+
+            //std::cout << i <<  "," << init_cog_x  << "," << init_cog_y << std::endl;
+
+            //modi_init_cog_xy_point.push_back(make_pair(init_cog_x,init_cog_y));//各stepでの初期重心位置の導出
+
+            //std::cout << "," << init_cog_x << "," << init_cog_y << std::endl;
+            j++;
+        }
+    }
+
+
+/*
+    for(int i=0;i<plan_node.foot_step_trajectory.size();i++){
+        std::cout << i*0.34 << "," << plan_node.foot_step_trajectory[i][1]<<","<<plan_node.foot_step_trajectory[i][2] << std::endl;
+    }
+*/
     if (save_file){
         FILE *gp = popen("gnuplot -persist\n", "w");
-
+        fprintf(gp, "set title  \"PreviewControl\"\n");
         fprintf(gp, "set xlabel \"x [m]\"\n");
-        fprintf(gp, "set xrange[-0.1:0.5]\n");
-    	fprintf(gp, "set ylabel \"y [m]\"\n");
-        fprintf(gp, "set yrange[-0.1:0.18]\n");
-
+        fprintf(gp, "set xrange[-0.05:0.3]\n");
+        fprintf(gp, "set ylabel \"y [m]\"\n");
+        fprintf(gp, "set yrange[-0.05:0.2]\n");
         fprintf(gp, "set size ratio -1\n");
+        fprintf(gp, "set grid \n");
+        fprintf(gp, "plot '-' with lines lw 4 lt 7 title \"COM\", '-' with lines lw 4 lt 2 title \"RefZMP\", '-' with points lw 2 lt 1 pt 7 title \"Foot planner trajectory\", '-' with lines lw 2 lt 6 title \"TJY\", '-' with points lw 3 lt 8 pt 7 title \"COG START Point\",\n");
 
-        fprintf(gp, "set key left top \n");
-        //fprintf(gp, "plot '-' with lines lw 2 lt 7 title \"COG\", '-' with lines lw 2 lt 2 title \"RefZMP\", \n");
-    	fprintf(gp, "plot '-' with lines lw 4 lt 7 title \"COM\", '-' with lines lw 4 lt 2 title \"RefZMP\", \n");
-        //for(std::size_t i=start_step;i<end_step;i++) fprintf(gp, "%f\t%f\n", xy_pts_COG[i].first, xy_pts_COG[i].second); fprintf(gp,"e\n");
+      //for(std::size_t i=start_step;i<end_step;i++) fprintf(gp, "%f\t%f\n", xy_pts_COG[i].first, xy_pts_COG[i].second); fprintf(gp,"e\n");
         for(std::size_t i=0;i<xy_pts_COG.size();i++) fprintf(gp, "%f\t%f\n", xy_pts_COG[i].first, xy_pts_COG[i].second); fprintf(gp,"e\n");
     	for(std::size_t i=0;i<xy_pts_refZMP.size();i++) fprintf(gp, "%f\t%f\n", xy_pts_refZMP[i].first, xy_pts_refZMP[i].second); fprintf(gp, "e\n");
-    	fprintf(gp,"exit\n");
+
+        for(std::size_t i=0;i<plan_node.foot_step_trajectory.size();i++) fprintf(gp, "%f\t%f\n", plan_node.foot_step_trajectory[i][1], plan_node.foot_step_trajectory[i][2]); fprintf(gp,"e\n");
+        for(std::size_t i=0;i<plan_node.foot_step_trajectory.size();i++) fprintf(gp, "%f\t%f\n", plan_node.foot_step_trajectory[i][1], plan_node.foot_step_trajectory[i][2]); fprintf(gp,"e\n");
+        for(std::size_t i=0;i<xy_cog_start_point.size();i++) fprintf(gp, "%f\t%f\n", xy_cog_start_point[i].first, xy_cog_start_point[i].second); fprintf(gp,"e\n");
+/*
+        for(std::size_t i=0;i<modi_xy_cog_start_point.size();i++) fprintf(gp, "%f\t%f\n", modi_xy_cog_start_point[i].first, modi_xy_cog_start_point[i].second); fprintf(gp,"e\n");
+        for(std::size_t i=0;i<modi_xy_trj_start_point.size();i++) fprintf(gp, "%f\t%f\n", modi_xy_trj_start_point[i].first, modi_xy_trj_start_point[i].second); fprintf(gp,"e\n");
+        for(std::size_t i=0;i<modi_init_cog_xy_point.size();i++) fprintf(gp, "%f\t%f\n", modi_init_cog_xy_point[i].first, modi_init_cog_xy_point[i].second); fprintf(gp,"e\n");
+*/
+        fprintf(gp,"exit\n");
     	pclose(gp);
     }
 #endif
@@ -196,14 +253,15 @@ int main(int argc, char *argv[])
             //std::cout << j * SAMPLING_TIME <<" "<< x(i) <<" "<< y(i) << std::endl;
 		}
 
-/*
-		std::cout << xy_pts_refZMP[num+1].first << " ";
+#if 0
+		std::cout << xy_pts_refZMP[num+1].first << std::endl;
 		std::cout << xy_pts_refZMP[num+1].second << std::endl;
-*/
-        std::cout << xyth_pts_refZMP[num+1](0) << " ";
-        std::cout << xyth_pts_refZMP[num+1](1) << " ";
-        std::cout << rad2deg(xyth_pts_refZMP[num+1](2)) << std::endl;
-
+#endif
+#if 1
+        std::cout << xyth_pts_refZMP[num+1](0) << std::endl;
+        std::cout << xyth_pts_refZMP[num+1](1) << std::endl;
+        std::cout << xyth_pts_refZMP[num+1](2) << std::endl;
+#endif
 		CurveFitting curve_fitting(5);
         //std::cout << std::endl;
 		curve_fitting.MAP(t, x, 0.0);
