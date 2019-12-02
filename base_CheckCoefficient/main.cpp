@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 			} else if (walking == 2) walking = 3;
 			com += std::to_string(walking) + " ";
 //			com += "temp.csv";
-#if 0
+#if 1
 			std::cerr << com << std::endl;
 #endif
 			if ((fp = popen(com.c_str(), "r")) == NULL){
@@ -251,8 +251,9 @@ int main(int argc, char *argv[])
 		}
 		if (walking == 2 && (i - last_step_start_time) == 34 / 2) foot_y = 0.0f;
 
-		std::cout << SAMPLING_TIME * i << "," << ref_zmp_x_gc << "," << ref_zmp_y_gc - foot_y << "," << current_x << "," << current_y << "," <<
-			v_x << "," << v_y << "," << acc_x << "," << acc_y << std::endl;
+		//std::cout << SAMPLING_TIME * i << "," << ref_zmp_x_gc << "," \
+        << ref_zmp_y_gc - foot_y << "," << current_x << "," << current_y << "," \
+        << v_x << "," << v_y << "," << acc_x << "," << acc_y << std::endl;
 
         xyth_pts_refZMP.push_back(std::make_pair(ref_zmp_x_gc, ref_zmp_y_gc - foot_y));
         xyth_pts_COG.push_back(std::make_pair(current_x, current_y));
@@ -278,6 +279,6 @@ int main(int argc, char *argv[])
 
         fprintf(gp,"exit\n");
         pclose(gp);
-#endif            
+#endif
 	return 0;
 }

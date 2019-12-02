@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/akira794/Desktop/PCPC/base_CheckCoefficient/main.cpp
+stdio.h
+-
+stdlib.h
+-
+string.h
+-
+iostream
+-
+string
+-
+sstream
+-
+iomanip
+-
+cmath
+-
+vector
+-
+

@@ -18,42 +18,42 @@ if [ "$coef" != "$out_of_range" ]; then
 	echo $coef
 fi
 
-para="0.249 0.000 36.000 0.1933 0.2908 -0.0298 -0.0021 1 1"
+para="0.240 0.000 36.0 0.2364 0.2503 -0.0298 -0.0021 1 1"
 coef=`./GenerateWalkPattern $para`
 echo "$para" 1>&2
 if [ "$coef" != "$out_of_range" ]; then
 	echo $coef
 fi
 
-para="0.174 0.000 27.000 0.2574 -0.2055 -0.0300 0.0040 0 1"
+para="0.180 0.000 27.0 0.2170 -0.2313 -0.0283 0.0018 0 1"
 coef=`./GenerateWalkPattern $para`
 echo "$para" 1>&2
 if [ "$coef" != "$out_of_range" ]; then
 	echo $coef
 fi
 
-para="0.132 0.000 18.000 0.2136 0.2699 -0.0320 0.0026 1 1"
+para="0.120 0.000 18.0 0.2572 0.2333 -0.0336 0.0007 1 1"
 coef=`./GenerateWalkPattern $para`
 echo "$para" 1>&2
 if [ "$coef" != "$out_of_range" ]; then
 	echo $coef
 fi
 
-para="0.063 0.000 9.000 0.2553 -0.2143 -0.0302 0.0044 0 1"
+para="0.060 0.000 9.0 0.2164 -0.2375 -0.0292 0.0017 0 1"
 coef=`./GenerateWalkPattern $para`
 echo "$para" 1>&2
 if [ "$coef" != "$out_of_range" ]; then
 	echo $coef
 fi
 
-para="0.030 0.000 -0.000 0.1884 0.2401 -0.0364 -0.0011 1 2"
+para="0.000 0.000 -0.0 0.2287 0.2088 -0.0381 -0.0031 1 2"
 coef=`./GenerateWalkPattern $para`
 echo "$para" 1>&2
 if [ "$coef" != "$out_of_range" ]; then
 	echo $coef
 fi
 
-para="0.030 0.000 -0.000 0.1884 0.2401 -0.0364 -0.0011 1 3"
+para="0.000 0.000 -0.0 0.2287 0.2088 -0.0381 -0.0031 1 3"
 coef=`./GenerateWalkPattern $para`
 echo "$para" 1>&2
 if [ "$coef" != "$out_of_range" ]; then

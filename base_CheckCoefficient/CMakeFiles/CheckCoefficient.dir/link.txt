@@ -1,0 +1,1 @@
+/usr/bin/c++       CMakeFiles/CheckCoefficient.dir/main.cpp.o  -o CheckCoefficient -rdynamic -lboost_system -lboost_filesystem -lboost_iostreams 
