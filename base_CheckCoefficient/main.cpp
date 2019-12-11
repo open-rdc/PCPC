@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 				step_dy = (walking == 1) ? ref_zmp_y - foot_y : 0;
 			}
 //			std::cout << "step_dy: " << step_dy << std::endl;
-#if 0
+#if 1
 			if (walking == 0){
 				corr[ 2] = 0.00986713 * vel_x +   1.00095 * disp_x + 0.00000150557;
 				corr[ 3] =   0.960351 * vel_x + 0.0784907 * disp_x + 9.39E-05;
@@ -262,9 +262,9 @@ int main(int argc, char *argv[])
         FILE *gp = popen("gnuplot -persist\n", "w");
 
         fprintf(gp, "set xlabel \"x [m]\"\n");
-        fprintf(gp, "set xrange[-0.05:0.3]\n");
+        //fprintf(gp, "set xrange[-0.05:0.3]\n");
         fprintf(gp, "set ylabel \"y [m]\"\n");
-        fprintf(gp, "set yrange[-0.05:0.2]\n");
+        //fprintf(gp, "set yrange[-0.05:0.2]\n");
         fprintf(gp, "set size ratio -1\n");
 
         fprintf(gp, "set key left top \n");
