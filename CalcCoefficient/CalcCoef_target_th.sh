@@ -9,7 +9,7 @@ cog_y=0
 out_of_range=`echo -e "0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0"`
 
 target_x=0.30
-for target_deg in `seq -90 1 90`
+for target_deg in `seq -60 1 60`
 do
     para="$target_x $target_y $target_deg $vel_x $vel_y $cog_x $cog_y 0 0"
     coef=`./GenerateWalkPattern $para`
@@ -19,7 +19,7 @@ do
     fi
 done
 echo " "
-for target_deg in `seq -90 1 90`
+for target_deg in `seq -60 1 60`
 do
     para="$target_x $target_y $target_deg $vel_x $vel_y $cog_x $cog_y 1 0"
     coef=`./GenerateWalkPattern $para`

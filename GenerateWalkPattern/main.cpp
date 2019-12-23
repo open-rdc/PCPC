@@ -157,6 +157,7 @@ int main(int argc, char *argv[])
         //fprintf(gp, "set yrange[-0.05:0.2]\n");
         fprintf(gp, "set size ratio -1\n");
         fprintf(gp, "set grid \n");
+        fprintf(gp, "set key left top \n");
         fprintf(gp, "plot '-' with lines lw 4 lt 7 title \"COM\", '-' with lines lw 4 lt 2 title \"RefZMP\", '-' with points lw 2 lt 1 pt 7 title \"Foot planner trajectory\", '-' with lines lw 2 lt 6 title \"TJY\", '-' with points lw 3 lt 8 pt 7 title \"COG START Point\",\n");
 
       //for(std::size_t i=start_step;i<end_step;i++) fprintf(gp, "%f\t%f\n", xy_pts_COG[i].first, xy_pts_COG[i].second); fprintf(gp,"e\n");

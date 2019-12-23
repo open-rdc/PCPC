@@ -50,7 +50,7 @@ bool FootPlanner::SetTargetPos(const double target_x, const double target_y, con
         stride.th = 0.0;
     }
 	bool result = target_pos_2_foot_step(ref_leg_sup);
-
+    return true;
 /* check plot */
 }
 

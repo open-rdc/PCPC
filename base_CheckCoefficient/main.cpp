@@ -122,7 +122,8 @@ int main(int argc, char *argv[])
 				step_dx = (walking == 1) ? ref_zmp_x	 : 0;
 				step_dy = (walking == 1) ? ref_zmp_y - foot_y : 0;
 			}
-//			std::cout << "step_dy: " << step_dy << std::endl;
+			std::cout << "step(dx,dy): " << step_dx <<"," << step_dy <<  std::endl;
+            //std::cout << "disp(x,y): " << disp_x <<"," << disp_y <<  std::endl;
 #if 1
 			if (walking == 0){
 				corr[ 2] = 0.00986713 * vel_x +   1.00095 * disp_x + 0.00000150557;
@@ -219,6 +220,10 @@ int main(int argc, char *argv[])
 //			corr[2] = current_x;
 //			corr[8] = current_y;
 #endif
+            for(int i = 2; i<14; i++){
+                std::cout << "No." << i << "  = " << corr[i] << std::endl;
+            }
+
 			corr[2] += ref_zmp_x_gc;
 			corr[8] += ref_zmp_y_gc;
 			if (walking < 2){
