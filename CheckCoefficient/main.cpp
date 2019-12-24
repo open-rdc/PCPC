@@ -39,16 +39,13 @@ double deg2rad(int deg){
     return deg * M_PI / 180;
 }
 
-float rotate_sign(float a){
-    return (a>0.0)-(a<0.0);
-}
-
 int main(int argc, char *argv[])
 {
 	struct Target_T target[10];
 	if (argc < 5 || (argc-1)%4 != 0){
 		std::cerr << "Generate walking patterns by the Pre-Calculated Preview Control" << std::endl <<
-		"Usage: CheckCoefficient <time> <x> <y> <th>[<time> <x> <y> <th>...]" << std::endl;
+		"Usage: CheckCoefficient <time> <x> <y> <th>[<time> <x> <y> <th>...]" << std::endl <<
+        "EX. : 0.0 0.3 0.0 0  1.02 0.3 0.0 45 " << std::endl;
 		exit(-1);
 	}
 	int num_target = (argc-1)/4;
@@ -91,6 +88,7 @@ int main(int argc, char *argv[])
     float step_dx = 0.0f, step_dy = 0.0f;
 	float disp_x = 0.0f, disp_y = 0.0f;
 	int dir = 1;
+
 	int sampling_num_half_cycle = (WALKING_HALF_CYCLE + SAMPLING_TIME / 2) / SAMPLING_TIME;
 
     std::vector<std::pair<double,double>> xyth_pts_refZMP;
@@ -109,7 +107,6 @@ int main(int argc, char *argv[])
 
     std::ifstream ifs;
     std::string prev_buf, prev_str, buf, str;
-    std::string data_name = "45deg.csv";//係数の保存先
     std::string prev_data = "45_prev.csv";//45deg時の予見制御の重心位置・速度・加速度のデータ保存先
     int count = 0, prev_count = 0;
 
@@ -167,26 +164,12 @@ int main(int argc, char *argv[])
     ifs.close();
 #endif
 
-/*### 多項式の係数を呼び出し */
-    ifs.open(data_name,std::ios::in);/* csv file open */
-    if(ifs.fail())
-    {
-        std::cout << "読み込みに失敗" << std::endl;
-    }
-    while(getline(ifs,str))
-    {
-        count++;
-    }
-    ifs.close();
-    ifs.open(data_name,std::ios::in);
-    std::vector<double>data(15,0);//12->15
-    for(int i=0;i<data.size();i++) data[i]=0.f;
-
 	std::cout << "time(s),ref_x(m),ref_y(m),cog_x(m),cog_y(m),v_x(m/s),v_y(m/s),a_x(m/s2),a_y(m/s2)" << std::endl;
     int q = 0;
     int target_deg =0, flag_x = 0;
     float next_trajectory_x = 0.0f, next_trajectory_y = 0.0f, next_trajectory_th = 0.0f;
     int sign = 0;
+    int sign_deg = 0;
 
     xyth_pts_COG.push_back(std::make_pair(0.0, 0.0));
     xyth_pts_vel.push_back(std::make_pair(0.0, 0.0));
@@ -226,6 +209,7 @@ int main(int argc, char *argv[])
                 if(target_deg != 0) q+= 1;//9degで割れない場合は1ステップ追加する
                 //std::cout << q << std::endl;
                 target[step].x = ((target[step].x < 0.0 )?(-1):(1))*MAX_X_STEP*q;
+                sign_deg = (target[step].deg > 0 ? 1 : -1 );
                 flag_x = 1;
             }
             target[step].x > 0.0 ? sign = 1 : sign = -1; // target[step].xが負のときマイナス符号を係数に掛ける
@@ -239,16 +223,7 @@ int main(int argc, char *argv[])
 
 			com = com0;
             // 歩行停止フェーズ出ない場合は以下を実行
-#if 0
-            next_trajectory_x = length*cos(ref_zmp_th_gc+ref_zmp_th)+ref_zmp_x_gc;
-            next_trajectory_y = length*sin(ref_zmp_th_gc+ref_zmp_th)+ref_zmp_y_gc+(target[step-1].deg != 0 ? 0 : (ref_zmp_y - foot_y));
-            next_trajectory_th= ref_zmp_th_gc+ref_zmp_th;
 
-            //std::cout <<"next_trajectory_pos  :"\
-            << next_trajectory_x << "," \
-            << next_trajectory_y << "," \
-            << to_string(rad2deg(next_trajectory_th),2) << std::endl;
-#endif
 			if (walking < 2){
 				foot_y = FOOT_WIDTH * ((walking == 0) ? 0 : ((support_foot == 1) ? -1 : 1));
 
@@ -280,16 +255,6 @@ int main(int argc, char *argv[])
                 }else{
                     target_dth = 0.0;
                 }
-                //std::cout << "time stride_x_gc, stride_y_gc  :" << t <<", " << stride_x_gc << "," << stride_y_gc << std::endl;
-/*
-                //現在の重心位置の座標移動
-                prev_trajectory_x  = - (foot_y)*sin( ref_zmp_th ) + ref_zmp_x;
-                prev_trajectory_y  =   (foot_y)*cos( ref_zmp_th ) + ref_zmp_y;
-                cog_x = current_x - prev_trajectory_x - ref_zmp_x_gc;
-                cog_y = current_y - prev_trajectory_y - ref_zmp_y_gc;
-
-                prev_trajectory をtrajectoryに置き換え、廃止
-*/
                 //現在の重心位置の座標移動
                 pos_trajectory_x  = - (foot_y)*sin( ref_zmp_th ) + ref_zmp_x;
                 pos_trajectory_y  =   (foot_y)*cos( ref_zmp_th ) + ref_zmp_y;
@@ -358,8 +323,6 @@ int main(int argc, char *argv[])
             // 以下がPre-Calculated Preview Control の実態部分
 			// 上記でFootStepPlannerがGenerateWalkPattern内で実行されているため,PCPC単体で動かすには事前にFootStepPlannerの結果を入れておく必要がある
 			if (walking < 3){
-                //disp_x = current_x - ref_zmp_x_gc - ref_zmp_x;          //cog_x
-				//disp_y = current_y - ref_zmp_y_gc - ref_zmp_y - foot_y; //cog_y
                 disp_x = init_cog_x;
                 disp_y = init_cog_y;
                 dir = (support_foot == 1) ? -1 : 1;
@@ -371,20 +334,7 @@ int main(int argc, char *argv[])
 				ref_zmp_x = corr[0];//
 				ref_zmp_y = corr[1];
                 ref_zmp_th= corr[2];
-/*
-                prev_trajectory_x  = - (foot_y)*sin( prev_ref_zmp_th ) + prev_ref_zmp_x;
-                prev_trajectory_y  =   (foot_y)*cos( prev_ref_zmp_th ) + prev_ref_zmp_y;
-                trajectory_stride  = prev_trajectory_x*cos(-prev_ref_zmp_th) - (prev_trajectory_y*sin(-prev_ref_zmp_th));
-                std::cout << "tarjectory_stride  " << trajectory_stride << std::endl;
 
-                STEP3
-                ref_zmp_th_gc += prev_ref_zmp_th;//累積旋回角 9, 18, 27 ....
-                ref_zmp_x_gc  += trajectory_stride*cos(ref_zmp_th_gc);
-                ref_zmp_y_gc  += trajectory_stride*sin(ref_zmp_th_gc) + ((prev_ref_zmp_th != 0.0) ? 0.0f : (prev_ref_zmp_y + foot_y));//旋回しながら横移動は考えないものとする
-                xyth_pts_trajectory.push_back(std::make_pair(ref_zmp_x_gc, ref_zmp_y_gc ));
-
-                trajectory_stride = length で代用可能だった為廃止
-*/
                 ref_zmp_th_gc += prev_ref_zmp_th;//累積旋回角 9, 18, 27 ....
                 ref_zmp_x_gc  += length*cos(ref_zmp_th_gc);
                 ref_zmp_y_gc  += length*sin(ref_zmp_th_gc) + ((prev_ref_zmp_th != 0.0) ? 0.0f : (prev_ref_zmp_y + foot_y));//旋回しながら横移動は考えないものとする
@@ -393,263 +343,96 @@ int main(int argc, char *argv[])
 				step_dx = (walking == 1) ? (-(-foot_y)*sin(ref_zmp_th)+ref_zmp_x): 0;
 				step_dy = (walking == 1) ? ((-foot_y)*cos(ref_zmp_th)+ref_zmp_y) : 0;
 			}
-
-            //多項式の係数を45deg.csvから呼び出し( 45deg.csvは周期(0.34)毎)
-#if 0
-            //#load coefficient
-            if(ifs && std::getline(ifs, buf)){
-                std::istringstream stream(buf);
-                for(int j=0; j<15; j++){
-                    std::string num;
-                    std::getline(stream, num, ' ');
-                    data[j] = std::atof(num.c_str());
-                    //std::cout << data[j] << std::endl;
-                }
-                //std::cout << std::endl;
-            }
-                //std::cout << "################" << std::endl;
-            for(int n=3; n<=14; n++){
-                corr[n] = data[n];
-                //std::cout << corr[n] << std::endl;
-            }
-            //std::cout << "################" << std::endl;
-#endif
-            //std::cout << "step(dx,dy) = " << step_dx << "," << step_dy << std::endl;
-
-            //std::cout << "disp(x,y) =  " << disp_x << "," << disp_y << std::endl;
+/*
             std::cout << rad2deg(target_dth) << std::endl;
             std::cout <<"dir   " << dir << std::endl;
             std::cout <<"init_vel   :" << init_vel_x << ", "<< init_vel_y << std::endl;
             std::cout <<" vel :  " << vel_x << ", " << vel_y << std::endl;
 
             std::cout << "rad:  " << std::atoi(to_string(rad2deg(target_dth), 1).c_str()) << std::endl;
-
-            if(dir == 1){ std::cout << "true" << std::endl;
-            }else{ std::cout << "false" << std::endl;}
-
+*/
             if(target[step].deg != 0){
-#if 0
+#if 1
                 //std::cout << "target_dx  = " << target_dx<< std::endl;
                 if (walking == 0){
-                    std::cout << "walking =0 " << std::endl << std::endl;
-                    std::cout << rad2deg(target_dth) << std::endl;
-                    std::cout <<"dir   " << dir << std::endl;
-    #if 1
+                    //std::cout << "walking =0 " << std::endl << std::endl;
+
                     /*x_coef*/
-                    corr[ 3] =   0.009832785   * init_vel_x +   1.0007521515 * disp_x + 0.000000961663;
-                    corr[ 4] =   0.9507822083  * init_vel_x +   0.0601223705 * disp_x + 0.00031604;
-                    corr[ 5] =  -5.7900075     * init_vel_x -  17.9360475758 * disp_x + 0.0352379;
-                    corr[ 6] =  16.1962504167  * init_vel_x +  65.1242954545 * disp_x - 0.0556214;
-                    corr[ 7] = -24.7802904167  * init_vel_x - 109.4457424242 * disp_x + 0.129835;
-                    corr[ 8] =  16.8415858333  * init_vel_x +  77.4709848485 * disp_x + 0.0094961;
-                    /*y_coef*/
-                    corr[ 9] =   0.009832784   * init_vel_y +   1.0007519795 * disp_y - 0.0000048335;
-                    corr[10] =   0.9507828561  * init_vel_y +   0.0601223089 * disp_y - 0.00143615;
-                    corr[11] =  -5.7900082121  * init_vel_y -  17.9360477273 * disp_y - 0.166368;
-                    corr[12] =  16.1962840909  * init_vel_y +  65.1242954545 * disp_y + 0.274715;
-                    corr[13] = -24.7803065152  * init_vel_y - 109.4458333333 * disp_y - 0.6510626;
-                    corr[14] =  16.84158083939 * init_vel_y +  77.4709998485 * disp_y + 0.0173041;
-    #endif
-                } else if (walking == 1 && fabs(rad2deg(target_dth)) >36 ){
-                    std::cout << "walking =1 && target_dth > 36" << std::endl << std::endl;
-    #if 1
-                    if(dir == 1){
-                        /*x_coef* xは導出完了 */
-                    corr[ 3] =  0.009832787  * init_vel_x + 1.0007500406  * disp_x + 0.0000078982;
-                    corr[ 4] =  0.950783579  * init_vel_x + 0.0601222955  * disp_x + 0.0024349103;
-                    corr[ 5] =  -5.7900075   * init_vel_x - 17.9360412121 * disp_x + 0.2778302745;
-                    corr[ 6] =  16.1962795   * init_vel_x + 65.1241742424 * disp_x - 0.4503781273;
-                    corr[ 7] =  -24.780304   * init_vel_x -109.4457045455 * disp_x + 1.0567936818;
-                    corr[ 8] =  16.8415863   * init_vel_x + 77.4709624242 * disp_x + 0.0169537527;
+                    corr[ 3] =   0.009832785   * init_vel_x +   1.0007521515 * disp_x + (sign_deg == 1 ? 0.000000961663 : 0.000001136605);
+                    corr[ 4] =   0.9507822083  * init_vel_x +   0.0601223705 * disp_x + (sign_deg == 1 ? 0.00031604 : 0.000371252);
+                    corr[ 5] =  -5.7900075     * init_vel_x -  17.9360475758 * disp_x + (sign_deg == 1 ? 0.0352379 : 0.0413779727);
+                    corr[ 6] =  16.1962504167  * init_vel_x +  65.1242954545 * disp_x + (sign_deg == 1 ? - 0.0556214 : -0.0648901182);
+                    corr[ 7] = -24.7802904167  * init_vel_x - 109.4457424242 * disp_x + (sign_deg == 1 ? 0.129835: 0.1502811818);
+                    corr[ 8] =  16.8415858333  * init_vel_x +  77.4709848485 * disp_x + (sign_deg == 1 ? 0.0094961: 0.0135097727);
 
                     /*y_coef*/
-                    corr[ 9] =   0.0098327891 * init_vel_y +  1.0007523434 * disp_y + 0.000050525333;
-                    corr[10] =   0.9507833182 * init_vel_y +  0.0601222929 * disp_y + 0.0069223447;
-                    corr[11] =  -5.7899985758 * init_vel_y - 17.9360463636 * disp_y - 0.44658046;
-                    corr[12] =  16.1962519697 * init_vel_y + 65.1242383838 * disp_y + 2.5193442667;
-                    corr[13] = -24.7803018182 * init_vel_y -109.4457979798 * disp_y - 3.7339071333;
-                    corr[14] =  16.8415836364 * init_vel_y + 77.4709777777 * disp_y + 3.8625974667;
+                    corr[ 9] =   0.009832784   * init_vel_y +   1.0007519795 * disp_y + (sign_deg == 1 ? - 0.0000048335: -0.00000520858);
+                    corr[10] =   0.9507828561  * init_vel_y +   0.0601223089 * disp_y + (sign_deg == 1 ? - 0.00143615: -0.00155966);
+                    corr[11] =  -5.7900082121  * init_vel_y -  17.9360477273 * disp_y + (sign_deg == 1 ? - 0.166368: -0.180143);
+                    corr[12] =  16.1962840909  * init_vel_y +  65.1242954545 * disp_y + (sign_deg == 1 ? 0.274715: 0.29629);
+                    corr[13] = -24.7803065152  * init_vel_y - 109.4458333333 * disp_y + (sign_deg == 1 ? - 0.6510626: -0.702032);
+                    corr[14] =  16.84158083939 * init_vel_y +  77.4709998485 * disp_y + (sign_deg == 1 ? 0.0173041: 0.0135777);
 
-                    }else{
-                    corr[ 3] =  0.009832797  * init_vel_x + 1.0007500571  * disp_x + 0.0000092978;
-                    corr[ 4] =  0.950783168  * init_vel_x + 0.0601223737  * disp_x + 0.0028486316;
-                    corr[ 5] =  -5.79000331  * init_vel_x - 17.9360485253 * disp_x + 0.3259831687;
-                    corr[ 6] =  16.19628106  * init_vel_x + 65.1242434343 * disp_x - 0.5306572909;
-                    corr[ 7] =  -24.7803003  * init_vel_x -109.4458040404 * disp_x + 1.2487176364;
-                    corr[ 8] =  16.84158687  * init_vel_x + 77.4710256465 * disp_x + 0.0075202562;
-                    /*y_coef*/
-                    corr[ 9] =   0.0098327925 * init_vel_y +  1.0007527778 * disp_y - 0.0000474444;
-                    corr[10] =   0.9507821667 * init_vel_y +  0.0601223056 * disp_y - 0.0059604452;
-                    corr[11] =  -5.7900029167 * init_vel_y - 17.9360488889 * disp_y + 0.5561602044;
-                    corr[12] =  16.196285     * init_vel_y + 65.1242466667 * disp_y - 2.6965424578;
-                    corr[13] = -24.7803058333 * init_vel_y -109.4458305556 * disp_y + 4.1505080111;
-                    corr[14] =  16.8415775    * init_vel_y + 77.471        * disp_y - 3.8547755556;
-                    }
-    #endif
+                }else if (walking == 1 && fabs(rad2deg(target_dth)) >18 ){
+                    //std::cout << "walking =1 && target_deg > 27" << std::endl << std::endl;
 
-                } else if (walking == 1 && fabs(rad2deg(target_dth)) >27 && fabs(rad2deg(target_dth)) <= 36){
-                    std::cout << "walking =1 && target_dth > 27" << std::endl << std::endl;
-
-#if 1
-                    if(dir == 1){
-                    /*x_coef*　xは完了*/
-                    corr[ 3] =  0.009832789  * init_vel_x + 1.0007500409  * disp_x + 0.0000078982;
-                    corr[ 4] =  0.95078375   * init_vel_x + 0.0601223333  * disp_x + 0.002434404;
-                    corr[ 5] =  -5.7900075   * init_vel_x - 17.9360484848 * disp_x + 0.2778044182;
-                    corr[ 6] =  16.1962675   * init_vel_x + 65.1241742424 * disp_x - 0.4505819636;
-                    corr[ 7] =  -24.780317   * init_vel_x -109.445830303  * disp_x + 1.0574524364;
-                    corr[ 8] =  16.84159     * init_vel_x + 77.471        * disp_x + 0.0159203636;
+                    corr[ 3] =  0.009832787  * init_vel_x + 1.0007500406  * disp_x + (sign_deg*dir == 1 ? 0.0000078982 : 0.0000092978);
+                    corr[ 4] =  0.950783579  * init_vel_x + 0.0601222955  * disp_x + (sign_deg*dir == 1 ? 0.0024349103 : 0.0028486316);
+                    corr[ 5] =  -5.7900075   * init_vel_x - 17.9360412121 * disp_x + (sign_deg*dir == 1 ? 0.2778302745 : 0.3259831687);
+                    corr[ 6] =  16.1962795   * init_vel_x + 65.1241742424 * disp_x + (sign_deg*dir == 1 ? - 0.4503781273 : - 0.5306572909);
+                    corr[ 7] =  -24.780304   * init_vel_x -109.4457045455 * disp_x + (sign_deg*dir == 1 ? 1.0567936818 : 1.2487176364);
+                    corr[ 8] =  16.8415863   * init_vel_x + 77.4709624242 * disp_x + (sign_deg*dir == 1 ? 0.0169537527 : 0.0075202562);
 
                     /*y_coef*/
-                    corr[ 9] =  0.0098327842  * init_vel_y +   1.0007523434 * disp_y + 0.000050525333;
-                    corr[10] =  0.9507829545  * init_vel_y +   0.060122292  * disp_y + 0.0069224667;
-                    corr[11] =  -5.7900124848 * init_vel_y -  17.9360437374 * disp_y - 0.4466094933;
-                    corr[12] =  16.1962806364 * init_vel_y +  65.1242212121 * disp_y + 2.5199208;
-                    corr[13] = -24.7803048485 * init_vel_y - 109.4458070707 * disp_y - 3.7364265333;
-                    corr[14] =  16.8415848485 * init_vel_y +  77.4709494949 * disp_y + 3.8653593333;
-
-                    }else{
-                    corr[ 3] =  0.009832785  * init_vel_x + 1.0007500399  * disp_x + 0.0000092997;
-                    corr[ 4] =  0.950783087  * init_vel_x + 0.0601222929  * disp_x + 0.0028491384;
-                    corr[ 5] =  -5.79000407  * init_vel_x - 17.9360393434 * disp_x + 0.3259981891;
-                    corr[ 6] =  16.19628106  * init_vel_x + 65.1241545455 * disp_x - 0.5302078909;
-                    corr[ 7] =  -24.7803139  * init_vel_x -109.4458565657 * disp_x + 1.2465829091;
-                    corr[ 8] =  16.84157880  * init_vel_x + 77.4709637374 * disp_x + 0.0100388564;
-
-                    /*y_coef*/
-                    corr[ 9] =  0.0098327942  * init_vel_y +  1.0007527778 * disp_y - 0.00004744444;
-                    corr[10] =  0.9507823333  * init_vel_y +  0.0601223333 * disp_y - 0.0059610884;
-                    corr[11] =  -5.7900135    * init_vel_y - 17.9360494444 * disp_y + 0.5561242578;
-                    corr[12] =  16.1962804167 * init_vel_y + 65.1243097222 * disp_y - 2.6968410944;
-                    corr[13] =  -24.78030875  * init_vel_y -109.4458305556 * disp_y + 4.1515415667;
-                    corr[14] =  16.8415775    * init_vel_y + 77.4710277778 * disp_y - 3.856299;
-
-                    }
-#endif
-
-                } else if (walking == 1 && fabs(rad2deg(target_dth)) >18 && fabs(rad2deg(target_dth)) <= 27){
-                    std::cout << "walking =1 && target_dth > 18" << std::endl << std::endl;
-#if 1
-                    /*x_coef xは完了*/
-                    if(dir == 1){
-                    corr[ 3] =  0.0098328046 * init_vel_x + 1.0007500773  * disp_x + 0.000007889;
-                    corr[ 4] =  0.9507832542 * init_vel_x + 0.0601222955  * disp_x + 0.0024330903;
-                    corr[ 5] =  -5.7900075   * init_vel_x - 17.9360387879 * disp_x + 0.2776581418;
-                    corr[ 6] =  16.196250833 * init_vel_x + 65.1242348485 * disp_x - 0.4505805091;
-                    corr[ 7] =  -24.78030791 * init_vel_x -109.4457151515 * disp_x + 1.0572049273;
-                    corr[ 8] =  16.841575    * init_vel_x + 77.471030303  * disp_x + 0.015362;
-
-                    /*y_coef*/
-                    corr[ 9] =   0.0098327909  * init_vel_y + 1.0007517576 * disp_y + 0.000050484;
-                    corr[10] =   0.9507825758  * init_vel_y + 0.060122303  * disp_y + 0.006916092;
-                    corr[11] =  -5.7899981515  * init_vel_y - 17.936049798 * disp_y - 0.4473199933;
-                    corr[12] =  16.1962830303  * init_vel_y + 65.12424848  * disp_y + 2.5209086;
-                    corr[13] = -24.7803027273  * init_vel_y -109.4457737374 * disp_y - 3.7388487333;
-                    corr[14] = 16.8415659091   * init_vel_y + 77.4710020202 * disp_y + 3.8648478667;
-
-                    }else{
-                    corr[ 3] =  0.009832780  * init_vel_x + 1.0007501571  * disp_x + 0.000009294067;
-                    corr[ 4] =  0.950783112  * init_vel_x + 0.0601223737  * disp_x + 0.0028441216;
-                    corr[ 5] =  -5.79000409  * init_vel_x - 17.9360440303 * disp_x + 0.3254393433;
-                    corr[ 6] =  16.19626378  * init_vel_x + 65.1242535354 * disp_x - 0.5295503818;
-                    corr[ 7] =  -24.7803063  * init_vel_x -109.4457620202 * disp_x + 1.2448232182;
-                    corr[ 8] =  16.84157897  * init_vel_x + 77.4709648889 * disp_x + 0.009368808;
-
-                    /*y_coef*/
-                    corr[ 9] =   0.009832908  * init_vel_y +  1.0007527778 * disp_y - 0.00004745555;
-                    corr[10] =   0.950782833  * init_vel_y +  0.0601223333 * disp_y - 0.0059633996;
-                    corr[11] =  -5.790005     * init_vel_y - 17.9360455556 * disp_y + 0.5558668067;
-                    corr[12] =  16.196285     * init_vel_y + 65.1242119444 * disp_y - 2.6966225967;
-                    corr[13] = -24.7802904167 * init_vel_y -109.4458305556 * disp_y + 4.1508414556;
-                    corr[14] = 16.8415858333  * init_vel_y + 77.4709722222 * disp_y - 3.856805;
-                    }
-#endif
+                    corr[ 9] =   0.0098327891 * init_vel_y +  1.0007523434 * disp_y +sign_deg*(sign_deg*dir == 1 ? 0.000050525333 :- 0.0000474444 );
+                    corr[10] =   0.9507833182 * init_vel_y +  0.0601222929 * disp_y +sign_deg*(sign_deg*dir == 1 ? 0.0069223447   :- 0.0059604452 );
+                    corr[11] =  -5.7899985758 * init_vel_y - 17.9360463636 * disp_y +sign_deg*(sign_deg*dir == 1 ? -0.44658046    :  0.5561602044 );
+                    corr[12] =  16.1962519697 * init_vel_y + 65.1242383838 * disp_y +sign_deg*(sign_deg*dir == 1 ? 2.5193442667   :- 2.6965424578 );
+                    corr[13] = -24.7803018182 * init_vel_y -109.4457979798 * disp_y +sign_deg*(sign_deg*dir == 1 ? -3.7339071333  :  4.1505080111 );
+                    corr[14] =  16.8415836364 * init_vel_y + 77.4709777777 * disp_y +sign_deg*(sign_deg*dir == 1 ? 3.8625974667   : -3.8547755556 );
 
                 } else if (walking == 1 && fabs(rad2deg(target_dth)) >9 && fabs(rad2deg(target_dth)) <= 18){
-                    std::cout << "walking =1 && target_dth > 9" << std::endl << std::endl;
-#if 1
+                    //std::cout << "walking =1 && 9 < target_deg <= 18" << std::endl << std::endl;
+
                     /*x_coef xは完了 */
-                    if(dir == 1){
-                    corr[ 3] =  0.009832794  * init_vel_x + 1.0007520335  * disp_x + 0.0000077485;
-                    corr[ 4] =  0.950783158  * init_vel_x + 0.0601223258  * disp_x + 0.0023901241;
-                    corr[ 5] =  -5.7900075   * init_vel_x - 17.9360412121 * disp_x + 0.2728692745;
-                    corr[ 6] =  16.19628833  * init_vel_x + 65.124295454  * disp_x - 0.4432158727;
-                    corr[ 7] =  -24.7802904  * init_vel_x -109.4458272727 * disp_x + 1.0399880545;
-                    corr[ 8] =  16.84158616  * init_vel_x + 77.4709618182 * disp_x + 0.0134837927;
+                    corr[ 3] =  0.009832794  * init_vel_x + 1.0007520335  * disp_x + (sign_deg*dir ==1 ? 0.0000077485   : 0.0000092019);
+                    corr[ 4] =  0.950783158  * init_vel_x + 0.0601223258  * disp_x + (sign_deg*dir ==1 ? 0.0023901241   : 0.0028184398);
+                    corr[ 5] =  -5.7900075   * init_vel_x - 17.9360412121 * disp_x + (sign_deg*dir ==1 ? 0.2728692745   : 0.3225767345);
+                    corr[ 6] =  16.19628833  * init_vel_x + 65.124295454  * disp_x + (sign_deg*dir ==1 ? - 0.4432158727 : - 0.5252478);
+                    corr[ 7] =  -24.7802904  * init_vel_x -109.4458272727 * disp_x + (sign_deg*dir ==1 ? 1.0399880545   : 1.2346576364);
+                    corr[ 8] =  16.84158616  * init_vel_x + 77.4709618182 * disp_x + (sign_deg*dir ==1 ? 0.0134837927   : 0.0080239307);
 
                     /*y_coef*/
-                    corr[ 9] =   0.0098327797 * init_vel_y +  1.0007501818 * disp_y + 0.000050508;
-                    corr[10] =   0.9507829545 * init_vel_y +  0.060122303  * disp_y + 0.006935942;
-                    corr[11] =  -5.7900127727 * init_vel_y - 17.9360437374 * disp_y - 0.4451074933;
-                    corr[12] =  16.1962733939 * init_vel_y + 65.1242656566 * disp_y + 2.5172636667;
-                    corr[13] = -24.78031      * init_vel_y -109.4458626263 * disp_y - 3.7305930667;
-                    corr[14] =  16.8415742424 * init_vel_y + 77.4710333333 * disp_y + 3.865175;
+                    corr[ 9] =   0.0098327797 * init_vel_y +  1.0007501818 * disp_y + sign_deg*(sign_deg*dir ==1 ? 0.000050508    : - 0.0000475);
+                    corr[10] =   0.9507829545 * init_vel_y +  0.060122303  * disp_y + sign_deg*(sign_deg*dir ==1 ? 0.006935942    : - 0.0060136377);
+                    corr[11] =  -5.7900127727 * init_vel_y - 17.9360437374 * disp_y + sign_deg*(sign_deg*dir ==1 ? - 0.4451074933 : 0.5502668389);
+                    corr[12] =  16.1962733939 * init_vel_y + 65.1242656566 * disp_y + sign_deg*(sign_deg*dir ==1 ? 2.5172636667   : - 2.68782107);
+                    corr[13] = -24.78031      * init_vel_y -109.4458626263 * disp_y + sign_deg*(sign_deg*dir ==1 ? - 3.7305930667 : 4.1304679);
+                    corr[14] =  16.8415742424 * init_vel_y + 77.4710333333 * disp_y + sign_deg*(sign_deg*dir ==1 ? 3.865175       : - 3.858574);
 
-                    }else{
-                    corr[ 3] =  0.009832790  * init_vel_x + 1.0007499704  * disp_x + 0.0000092019;
-                    corr[ 4] =  0.950783163  * init_vel_x + 0.0601222424  * disp_x + 0.0028184398;
-                    corr[ 5] =  -5.79001778  * init_vel_x - 17.9360499495 * disp_x + 0.3225767345;
-                    corr[ 6] =  16.19628106  * init_vel_x + 65.1241555555 * disp_x - 0.5252478;
-                    corr[ 7] =  -24.7803003  * init_vel_x -109.4458040404 * disp_x + 1.2346576364;
-                    corr[ 8] =  16.84158098  * init_vel_x + 77.4709540303 * disp_x + 0.0080239307;
-
-                    /*y_coef*/
-                    corr[ 9] =  0.0098327942  * init_vel_y +  1.00075      * disp_y - 0.0000475;
-                    corr[10] =  0.95078375    * init_vel_y +  0.06012225   * disp_y - 0.0060136377;
-                    corr[11] =  -5.7900250833 * init_vel_y - 17.9360458333 * disp_y + 0.5502668389;
-                    corr[12] =  16.1962801667 * init_vel_y + 65.1243158333 * disp_y - 2.68782107;
-                    corr[13] =  -24.78030375  * init_vel_y -109.4458305556 * disp_y + 4.1304679;
-                    corr[14] =  16.841573333  * init_vel_y +77.471         * disp_y - 3.858574;
-                    }
-#endif
 
                 } else if (walking == 1 && fabs(rad2deg(target_dth)) <= 9){
-                    std::cout << "walking =1 target_dth <= 9" << std::endl << std::endl;
-                    double deg = std::atoi(to_string(rad2deg(target_dth), 1).c_str());
-#if 1
+                    //std::cout << "walking =1 target_deg <= 9" << std::endl << std::endl;
+                    int deg = std::atoi(to_string(rad2deg(target_dth), 1).c_str());
+
                     /*x_coef xは */
+                    corr[ 3] =  0.009832784  * init_vel_x + 1.0007520149  * disp_x +(dir == 1? 0.0000069324 - 0.00000008833*(deg-9) : 0.0000082461 + 0.00000006*(deg-9));
+                    corr[ 4] =  0.950782083  * init_vel_x + 0.0601222879  * disp_x +(dir == 1? 0.0021187974 - 0.000025*(deg-9)      : 0.0025052356 + 0.000017883*(deg-9));
+                    corr[ 5] =  -5.79000875  * init_vel_x - 17.9360493939 * disp_x +(dir == 1? 0.2426275418 - 0.0029096833*(deg-9)  : 0.2876681564 + 0.002093667*(deg-9));
+                    corr[ 6] =  16.19628     * init_vel_x + 65.12425      * disp_x +(dir == 1? - 0.3953837791 + 0.0048103333*(deg-9): - 0.4700006655 - 0.0034781667*(deg-9));
+                    corr[ 7] =  -24.7803091  * init_vel_x -109.445833333  * disp_x +(dir == 1? 0.9296123636 - 0.0114306667*(deg-9)  : 1.1072071636 + 0.0082956667*(deg-9));
+                    corr[ 8] =  16.8415727   * init_vel_x + 77.4710143636 * disp_x +(dir == 1? 0.0045573247 + 0.000375*(deg-9)      : 0.0022232213 - 0.0003786667*(deg-9));
 
-                    if(dir == 1){
-
-                    corr[ 3] =  0.009832784  * init_vel_x + 1.0007520149  * disp_x + 0.0000069324 - 0.00000008833*(deg-9);
-                    corr[ 4] =  0.950782083  * init_vel_x + 0.0601222879  * disp_x + 0.0021187974 - 0.000025*(deg-9);
-                    corr[ 5] =  -5.79000875  * init_vel_x - 17.9360493939 * disp_x + 0.2426275418 - 0.0029096833*(deg-9);
-                    corr[ 6] =  16.19628     * init_vel_x + 65.12425      * disp_x - 0.3953837791 + 0.0048103333*(deg-9);
-                    corr[ 7] =  -24.7803091  * init_vel_x -109.445833333  * disp_x + 0.9296123636 - 0.0114306667*(deg-9);
-                    corr[ 8] =  16.8415727   * init_vel_x + 77.4710143636 * disp_x + 0.0045573247 + 0.000375*(deg-9);
-
-                    /*y_coef*/ /* y方向がおかしい */
-                    corr[ 9] =  0.009832795   * init_vel_y + 1.00075       * disp_y + 0.0000493    + 0.00000012716*(deg-9);
-                    corr[10] =  0.950783      * init_vel_y + 0.06012225    * disp_y + 0.0065439443 + 0.00003876*(deg-9);
-                    corr[11] =  -5.7900216667 * init_vel_y - 17.9360491667 * disp_y - 0.4887961811 + 0.0044458333*(deg-9);
-                    corr[12] =  16.196278275  * init_vel_y + 65.1243222222 * disp_y + 2.5866410444 - 0.0072498333*(deg-9);
-                    corr[13] = -24.7803063333 * init_vel_y -109.4458305556 * disp_y - 3.8903879667 + 0.0170545*(deg-9);
-                    corr[14] =  16.8415775    * init_vel_y + 77.4710277778 * disp_y + 3.852809     + 0.0000535*(deg-9);
-
-                    }else{
-
-                    corr[ 3] =  0.009832788  * init_vel_x + 1.000752108   * disp_x + 0.0000082461 + 0.00000006*(deg-9);
-                    corr[ 4] =  0.950783618  * init_vel_x + 0.0601223737  * disp_x + 0.0025052356 + 0.000017883*(deg-9);
-                    corr[ 5] =  -5.79000271  * init_vel_x - 17.936039596  * disp_x + 0.2876681564 + 0.002093667*(deg-9);
-                    corr[ 6] =  16.19626378  * init_vel_x + 65.1242561616 * disp_x - 0.4700006655 - 0.0034781667*(deg-9);
-                    corr[ 7] =  -24.7803003  * init_vel_x -109.4458070707 * disp_x + 1.1072071636 + 0.0082956667*(deg-9);
-                    corr[ 8] =  16.84158029  * init_vel_x + 77.4709655859 * disp_x + 0.0022232213 - 0.0003786667*(deg-9);
-
-                    /*y_coef*/
-                    corr[ 9] =  0.0098327758  * init_vel_y +  1.00075      * disp_y - 0.0000469    + 0.00000014*(deg-9);
-                    corr[10] =  0.9507835833  * init_vel_y +  0.0601223056 * disp_y - 0.0058115708 + 0.00000425*(deg-9);
-                    corr[11] =  -5.79002375   * init_vel_y - 17.9360508333 * disp_y + 0.5727868633 + 0.0048835667*(deg-9);
-                    corr[12] =  16.1962833333 * init_vel_y + 65.12417      * disp_y - 2.72369832   - 0.0079741667*(deg-9);
-                    corr[13] = -24.780305     * init_vel_y -109.4458333333 * disp_y + 4.2129882222 + 0.0187803333*(deg-9);
-                    corr[14] =  16.8415775    * init_vel_y + 77.471008333  * disp_y - 3.8524385222 - 0.00001245*(deg-9);
-
-                    }
-#endif
+                    /*y_coef */
+                    corr[ 9] =  0.009832795   * init_vel_y + 1.00075       * disp_y +(dir == 1? 0.0000493    + 0.00000012716*(deg-9) : - 0.0000469    + 0.00000014*(deg-9));
+                    corr[10] =  0.950783      * init_vel_y + 0.06012225    * disp_y +(dir == 1? 0.0065439443 + 0.00003876*(deg-9)    : - 0.0058115708 + 0.00000425*(deg-9));
+                    corr[11] =  -5.7900216667 * init_vel_y - 17.9360491667 * disp_y +(dir == 1? - 0.4887961811 + 0.0044458333*(deg-9): 0.5727868633 + 0.0048835667*(deg-9));
+                    corr[12] =  16.196278275  * init_vel_y + 65.1243222222 * disp_y +(dir == 1? 2.5866410444 - 0.0072498333*(deg-9)  : - 2.72369832   - 0.0079741667*(deg-9));
+                    corr[13] = -24.7803063333 * init_vel_y -109.4458305556 * disp_y +(dir == 1? - 3.8903879667 + 0.0170545*(deg-9)   : 4.2129882222 + 0.0187803333*(deg-9));
+                    corr[14] =  16.8415775    * init_vel_y + 77.4710277778 * disp_y +(dir == 1? 3.852809     + 0.0000535*(deg-9)     : - 3.8524385222 - 0.00001245*(deg-9));
 
     			} else if ((walking == 2)&&((i - last_step_start_time) < sampling_num_half_cycle / 2)){ // 1st half
-                    std::cout << "walking =2 1st half" << std::endl << std::endl;
-
-#if 1
+                    //std::cout << "walking =2 1st half" << std::endl << std::endl;
                     /*x_coef*/
                     corr[ 3] =  0.0098218192  * init_vel_x +  1.0007070909  * disp_x;
                     corr[ 4] =  0.9522823333  * init_vel_x +  0.065209703   * disp_x;
@@ -657,7 +440,8 @@ int main(int argc, char *argv[])
                     corr[ 6] = 16.3443616667  * init_vel_x +  64.45039394   * disp_x;
                     corr[ 7] = -24.0288625    * init_vel_x -  96.8950030303 * disp_x;
                     corr[ 8] = 12.2086808333  * init_vel_x +  34.6286030303 * disp_x;
-#if 1
+
+                    /*y_coef */
                     corr[ 9] =  0.0098218188  * init_vel_y +  1.0007064444 * disp_y + 0.00005485466666 * dir;
                     corr[10] =  0.952283375   * init_vel_y +  0.0652096768 * disp_y + 0.0083833893 * dir;
                     corr[11] = -5.8226083333  * init_vel_y - 18.0027044444 * disp_y - 0.2648671667 * dir;
@@ -665,12 +449,8 @@ int main(int argc, char *argv[])
                     corr[13] = -24.0288629167 * init_vel_y - 96.8951131313 * disp_y - 1.4731429333 * dir;
                     corr[14] = 12.208675      * init_vel_y + 34.628540404  * disp_y - 0.6107146667 * dir;
 
-#endif
-    #endif
     			} else { // 2nd half
-                    std::cout << "walking =2 2nd half" << std::endl << std::endl;
-
-    #if 1
+                    //std::cout << "walking =2 2nd half" << std::endl << std::endl;
                     /*x_coef*/
                     corr[ 3] = 0.0267749417  * init_vel_x + 1.0790043333  * disp_x;
                     corr[ 4] = 0.6303314167  * init_vel_x - 1.427         * disp_x;
@@ -679,7 +459,7 @@ int main(int argc, char *argv[])
                     corr[ 7] = -6.6099275    * init_vel_x - 23.8558333333 * disp_x;
                     corr[ 8] = 2.5156858333  * init_vel_x + 9.7315712121  * disp_x;
                     /*y_coef*/
-    #if 1
+
                     corr[ 9] = 0.0267747083  * init_vel_y + 1.0790045455 * disp_y - 0.02272376   * dir;
                     corr[10] = 0.6303314583  * init_vel_y - 1.427        * disp_y + 0.282812     * dir;
                     corr[11] = -3.356070875  * init_vel_y - 6.5825979798 * disp_y - 1.0723469333 * dir;
@@ -687,18 +467,17 @@ int main(int argc, char *argv[])
                     corr[13] = -6.6099213333 * init_vel_y -23.8557868687 * disp_y - 1.7747122667 * dir;
                     corr[14] = 2.5156853333  * init_vel_y +9.7315822222  * disp_y + 0.6545192533 * dir;
 
-    #endif
-    #endif
     			}
-    #endif
-
+#endif
+#if 0
+                std::cout << "Coefficient" << std::endl;
                 for(int i = 3; i<15; i++){
-                    std::cout << "No." << i << "  = " << corr[i] << std::endl;
+                    std::cout << "No." << i-2 << "  = " << corr[i] << std::endl;
                 }
-
+#endif
             }else{
     /* default */
-    #if 1
+#if 1
     			if (walking == 0){
     				corr[ 3] = 0.00986713 * vel_x +   1.00095 * disp_x + 0.00000150557;
     				corr[ 4] =   0.960351 * vel_x + 0.0784907 * disp_x + 9.39E-05;
